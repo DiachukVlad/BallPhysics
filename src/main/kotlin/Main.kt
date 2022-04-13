@@ -58,6 +58,20 @@ class Main : PApplet() {
         circle(collision.x, collision.y, 0.1f)
     }
 
+    fun drawVec(vec: Float2, start: Float2 = Float2(), color: Int = 0) {
+        stroke(color)
+        strokeWeight(0.2f)
+        line(start.x, start.y, vec.x + start.x, vec.y + start.y)
+
+        fCircle(vec + start, color = color)
+    }
+
+    fun fCircle(a: Float2, r: Float = 0.2f, color: Int = 0) {
+        noStroke()
+        fill(color)
+        circle(a.x, a.y, r)
+    }
+
     private fun drawBarrier() {
         noFill()
         stroke(0f)
@@ -76,7 +90,7 @@ class Main : PApplet() {
 
                 val (f, m) = getForceAndMomentum(ball, coords, (mousePos - coords))
                 force += f
-                momentum += m
+                torque += m
             }
         }
     }

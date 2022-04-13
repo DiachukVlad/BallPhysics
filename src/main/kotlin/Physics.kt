@@ -2,10 +2,8 @@ import dev.romainguy.kotlin.math.Float2
 import dev.romainguy.kotlin.math.distance
 import dev.romainguy.kotlin.math.length
 import dev.romainguy.kotlin.math.normalize
+import dev.romainguy.kotlin.math.dot
 import processing.core.PApplet.*
-import processing.core.PConstants
-import java.awt.Color
-import kotlin.math.PI
 
 var onTick = {}
 
@@ -19,10 +17,17 @@ val g = Float2(0f, -9.81f)
 
 val balls = arrayOf(
     Ball(
-        pos = Float2(5f, 5f),
-        speed = Float2(),
-        angle = -PConstants.PI / 4,
-        angSpeed = 0.2f
+        pos = Float2(5f, 10f),
+        speed = Float2(5f, 5f),
+        angSpeed = 5f,
+        m = 1f,
+        frictionCoeff = 5f
+    ),
+    Ball(
+        pos = Float2(20f, 11.8f),
+        speed = Float2(0f, 0f),
+        angSpeed = 0f,
+        m = 1f
     )
 )
 
@@ -33,8 +38,8 @@ var energy = 0f
 
 var collision = Float2()
 
-fun tick(timeF: Float) {
-    timer += timeF
+fun tick(dt: Float) {
+    timer += dt
     energy = 0f
 
     // look for collisions
@@ -55,8 +60,9 @@ fun tick(timeF: Float) {
     }
 
     balls.forEach {
+//        it.force = g * it.m
         it.force = Float2()
-        it.momentum = 0f
+        it.torque = 0f
     }
 
     onTick()
@@ -68,24 +74,55 @@ fun tick(timeF: Float) {
 
         collision = p
 
-        val del = a.radius - distance(a.pos, p)
-        val normal = normalize(a.pos - p)
-        var f = normal * del * a.k
-        if (b == null) f *= 2f
-        a.force += f
-        b?.let { it.force += -normal * del * a.k }
+        val dr = a.radius - distance(a.pos, p)
+        val normalToP = normalize(a.pos - p)
+        val normalInP = normalize(p - a.pos).rotate(-PI / 2f)
 
-        a.speed *= 0.995f
+        // spring force
+        val springForce = dr * a.k
+        var vecSpringForce = normalToP * springForce
+        if (b == null) vecSpringForce *= 2f
+        a.force += vecSpringForce
+        b?.let { it.force -= vecSpringForce}
+
+        // get force from speed and rotation
+        val speedInP = a.angSpeed / a.radius
+        val vectorSpeedInP = a.speed - normalInP * speedInP
+
+        val forceInP = a.m * vectorSpeedInP / dt / 2f
+        var projSpeedInP = forceInP projectOn normalInP
+
+        // get friction force
+        val maxFrictionForce = springForce * a.frictionCoeff
+        if (length(projSpeedInP) > maxFrictionForce) {
+            projSpeedInP = normalize(projSpeedInP) * maxFrictionForce
+        }
+
+        // apply friction force for objects
+        if (b!=null) {
+            val (fr, m) = getForceAndMomentum(a, p, -projSpeedInP)
+
+            a.force += fr
+            a.torque += m
+
+            b.force += -fr
+            b.torque += m
+        } else {
+            val (fr, m) = getForceAndMomentum(a, p, -projSpeedInP)
+
+            a.force += fr
+            a.torque += m
+            println(m)
+        }
     }
 
     // update speed and pos
     balls.forEach {
-        it.speed += (it.force / it.m + g) * timeF
-        it.pos += it.speed * timeF
+        it.speed += (it.force / it.m) * dt
+        it.pos += it.speed * dt
 
-        it.angSpeed += it.momentum / it.m * timeF
-        it.angle += it.angSpeed * timeF
-
+        it.angSpeed += it.torque / it.m * dt
+        it.angle += it.angSpeed * dt
 
         energy += it.m * length(it.speed).let { it * it } / 2 - g.y * it.m * it.pos.y
     }
@@ -97,6 +134,10 @@ fun getForceAndMomentum(ball: Ball, coords: Float2, force: Float2): Pair<Float2,
 
     val fEnd = coords + force - ball.pos
     val fNor = normalize(fEnd)
-    val f = fNor * (length(fEnd) - length(coords-ball.pos))
+    val f = fNor * (length(fEnd) - length(coords - ball.pos))
     return f to m
+}
+
+infix fun Float2.projectOn(b: Float2): Float2 {
+    return b / length(b) * dot(this, b) / length(b)
 }
