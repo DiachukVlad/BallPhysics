@@ -60,8 +60,8 @@ fun tick(dt: Float) {
     }
 
     balls.forEach {
-//        it.force = g * it.m
-        it.force = Float2()
+        it.force = g * it.m
+//        it.force = Float2()
         it.torque = 0f
     }
 
@@ -83,7 +83,7 @@ fun tick(dt: Float) {
         var vecSpringForce = normalToP * springForce
         if (b == null) vecSpringForce *= 2f
         a.force += vecSpringForce
-        b?.let { it.force -= vecSpringForce}
+        b?.let { it.force -= vecSpringForce }
 
         // get force from speed and rotation
         val speedInP = a.angSpeed / a.radius
@@ -99,7 +99,7 @@ fun tick(dt: Float) {
         }
 
         // apply friction force for objects
-        if (b!=null) {
+        if (b != null) {
             val (fr, m) = getForceAndMomentum(a, p, -projSpeedInP)
 
             a.force += fr
@@ -108,11 +108,10 @@ fun tick(dt: Float) {
             b.force += -fr
             b.torque += m
         } else {
-            val (fr, m) = getForceAndMomentum(a, p, -projSpeedInP)
+            val (fr, m) = getForceAndMomentum(a, p, -projSpeedInP * 2f)
 
             a.force += fr
             a.torque += m
-            println(m)
         }
     }
 
