@@ -18,17 +18,18 @@ val g = Float2(0f, -9.81f)
 val balls = arrayOf(
     Ball(
         pos = Float2(5f, 10f),
-        speed = Float2(5f, 5f),
+        speed = Float2(10f, 0f),
         angSpeed = 5f,
         m = 1f,
-        frictionCoeff = 5f
+        frictionCoeff = 0.5f
     ),
     Ball(
-        pos = Float2(20f, 11.8f),
-        speed = Float2(0f, 0f),
+        pos = Float2(25f, 11.8f),
+        speed = Float2(-4f, 0f),
         angSpeed = 0f,
-        m = 1f
-    )
+        m = 1f,
+        frictionCoeff = 0.5f
+    ),
 )
 
 var collisions = arrayListOf<Pair<Pair<Ball, Ball?>, Float2>>()
@@ -60,8 +61,8 @@ fun tick(dt: Float) {
     }
 
     balls.forEach {
-        it.force = g * it.m
-//        it.force = Float2()
+//        it.force = g * it.m
+        it.force = Float2()
         it.torque = 0f
     }
 
@@ -86,32 +87,19 @@ fun tick(dt: Float) {
         b?.let { it.force -= vecSpringForce }
 
         // get force from speed and rotation
-        val speedInP = a.angSpeed / a.radius
+        val speedInP = a.angSpeed * a.radius
         val vectorSpeedInP = a.speed - normalInP * speedInP
+        val speedProj = vectorSpeedInP projectOn normalInP
 
-        val forceInP = a.m * vectorSpeedInP / dt / 2f
-        var projSpeedInP = forceInP projectOn normalInP
+        val frictionForce = a.frictionCoeff * springForce * normalize(-speedProj)
+        val (fr, m) = getForceAndMomentum(a, p, frictionForce)
 
-        // get friction force
-        val maxFrictionForce = springForce * a.frictionCoeff
-        if (length(projSpeedInP) > maxFrictionForce) {
-            projSpeedInP = normalize(projSpeedInP) * maxFrictionForce
-        }
+        a.force += fr
+        a.torque += m
 
-        // apply friction force for objects
         if (b != null) {
-            val (fr, m) = getForceAndMomentum(a, p, -projSpeedInP)
-
-            a.force += fr
-            a.torque += m
-
-            b.force += -fr
-            b.torque += m
-        } else {
-            val (fr, m) = getForceAndMomentum(a, p, -projSpeedInP * 2f)
-
-            a.force += fr
-            a.torque += m
+            b.force -= fr
+            b.torque -= m
         }
     }
 
